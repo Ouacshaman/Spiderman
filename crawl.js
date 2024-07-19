@@ -1,19 +1,13 @@
 import {JSDOM} from 'jsdom';
 
-function normURL(url){
-	try {
-		const myURL = new URL(url);
-		const host = myURL.hostname.toString();
-		const path = myURL.pathname.toString();
-		const full = host.concat(path);
-		if(full[full.length-1]=="/"){
-			return full.slice(0,full.length-1);
-		}else{
-			return full;
-		}
-	} catch {
-		return "invalid url";
-	}
+function normURL(url) {
+    try {
+        const myURL = new URL(url);
+        return myURL.origin + myURL.pathname.replace(/\/$/, "");
+    } catch (e) {
+        console.log(`Invalid URL: ${url}`);
+        return null;
+    }
 }
 
 function getUrlFromHtml(html, base){
@@ -34,23 +28,34 @@ function getUrlFromHtml(html, base){
 	}
 }
 
-function crawlPage(base, current = base, pages = {}) {
+async function crawlPage(base, current = base, pages = {}) {
 	try {
-		if(normURL(current)!=normURL(base)){
+		console.log(`Processing: ${current}`);
+		const normBase = normURL(base);
+		const normCurr = normURL(current);
+		if(!normBase || !normCurr){
+			return pages
+		}
+		if(new URL(current).hostname !== new URL(base).hostname){
 			return pages;
 		}
-		const normalUrl = normURL(current);
+		const normalUrl = normCurr;
 		if(pages[normalUrl]){
 			pages[normalUrl] += 1;
 		}else{
 			pages[normalUrl] = 1;
 		}
-		const htmlBody = fetchHTML(current);
-		const htmlList = getUrlFromHtml(htmlBody, normalUrl);
-		for(let url of htmlList){
-			crawlPage(base, url, pages);
+		const htmlBody = await fetchHTML(current);
+		if(!htmlBody){
+			return pages;
 		}
-		return pages
+		const htmlList = getUrlFromHtml(htmlBody, normalUrl);
+		console.log(`${current}: ${htmlList}`);
+		for(let url of htmlList){
+			await crawlPage(base, normURL(url), pages);
+		}
+		console.log(pages);
+		return pages;
 	} catch (error) {
 		console.log(`error: ${error}`);
 	}
