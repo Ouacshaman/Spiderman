@@ -34,29 +34,50 @@ function getUrlFromHtml(html, base){
 	}
 }
 
-async function crawlPage(url) {
+function crawlPage(base, current = base, pages = {}) {
 	try {
-		const content = await fetch(url,{
-			method: 'GET',
-			mode: 'cors'
-		});
-		if(content.status >= 400){
-			console.log(`error: ${content.status}`);
-			return
+		if(normURL(current)!=normURL(base)){
+			return pages;
 		}
-		if(!content.headers.get('Content-Type').includes('text/html')){
-			console.log(`incorrect content: ${content.headers.get('Content-Type')}`);
-			return
+		const normalUrl = normURL(current);
+		if(pages[normalUrl]){
+			pages[normalUrl] += 1;
 		}else{
-			const html = await content.text();
-			console.log(html);
+			pages[normalUrl] = 1;
 		}
-
+		const htmlBody = fetchHTML(current);
+		const htmlList = getUrlFromHtml(htmlBody, normalUrl);
+		for(let url of htmlList){
+			crawlPage(base, url, pages);
+		}
+		return pages
 	} catch (error) {
 		console.log(`error: ${error}`);
 	}
 }
 
-crawlPage('https://wagslane.dev');
+async function fetchHTML(url) {
+	try{
+		const rep = await fetch(url, {
+			method: 'GET',
+			mode: 'cors'
+		});
+		if(rep.status >= 400){
+			console.log(`error: ${rep.status}`);
+			return;
+		}
+		if(!rep.headers.get('Content-Type').includes('text/html')){
+			console.log(`incorrect content: ${rep.headers.get('Content-Type')}`);
+			return
+		}else{
+			const html = await rep.text();
+			return html;
+		}
+	} catch(error){
+		console.log(`error: ${error}`);
+	}
 
-export{normURL, getUrlFromHtml, crawlPage};
+
+}
+
+export{normURL, getUrlFromHtml, crawlPage, fetchHTML};
