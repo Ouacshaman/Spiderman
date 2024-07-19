@@ -3,7 +3,7 @@ import {JSDOM} from 'jsdom';
 function normURL(url) {
     try {
         const myURL = new URL(url);
-        return myURL.origin + myURL.pathname.replace(/\/$/, "");
+        return `${myURL.protocol}//${myURL.hostname}${myURL.pathname.replace(/\/$/, "")}`;
     } catch (e) {
         console.log(`Invalid URL: ${url}`);
         return null;
@@ -17,14 +17,15 @@ function getUrlFromHtml(html, base){
 		const list = [];
 		for(let a of rel){
 			const temp = new URL(a.href,base);
-			const proto = temp.protocol.concat('//');	
 			const rel = normURL(temp.href);
-			const abs = proto.concat(rel);
-			list.push(abs);
+			if (rel){
+				list.push(rel);
+			}
 		}
 		return list;
 	} catch {
-		return "failed"
+		console.log(`Error getting URLs from HTML: ${error}`);
+		return [];
 	}
 }
 
@@ -38,18 +39,18 @@ async function crawlPage(base, current = base, pages = {}) {
 		}
 		if(new URL(current).hostname !== new URL(base).hostname){
 			return pages;
-		}
-		const normalUrl = normCurr;
-		if(pages[normalUrl]){
-			pages[normalUrl] += 1;
+		} 
+		if(pages[normCurr]){
+			pages[normCurr] += 1;
+			return pages
 		}else{
-			pages[normalUrl] = 1;
+			pages[normCurr] = 1;
 		}
 		const htmlBody = await fetchHTML(current);
 		if(!htmlBody){
 			return pages;
 		}
-		const htmlList = getUrlFromHtml(htmlBody, normalUrl);
+		const htmlList = await getUrlFromHtml(htmlBody, normCurr);
 		console.log(`${current}: ${htmlList}`);
 		for(let url of htmlList){
 			await crawlPage(base, normURL(url), pages);
@@ -58,6 +59,7 @@ async function crawlPage(base, current = base, pages = {}) {
 		return pages;
 	} catch (error) {
 		console.log(`error: ${error}`);
+		return pages;
 	}
 }
 
@@ -80,6 +82,7 @@ async function fetchHTML(url) {
 		}
 	} catch(error){
 		console.log(`error: ${error}`);
+		return;
 	}
 
 
