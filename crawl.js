@@ -51,11 +51,9 @@ async function crawlPage(base, current = base, pages = {}) {
 			return pages;
 		}
 		const htmlList = await getUrlFromHtml(htmlBody, normCurr);
-		console.log(`${current}: ${htmlList}`);
-		for(let url of htmlList){
+		for(const url of htmlList){
 			await crawlPage(base, normURL(url), pages);
 		}
-		console.log(pages);
 		return pages;
 	} catch (error) {
 		console.log(`error: ${error}`);
